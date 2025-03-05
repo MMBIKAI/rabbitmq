@@ -7,14 +7,16 @@ const sendMessage = async () => {
         //const queue = "task_queue";
         const exchange = "logs"; //name of the exchange
 
-        await channel.assertExchange(exchange, "fanout", { durable: false });
+        const severity = process.argv[2] || "info"; //Routing Key (e.g., 'info', 'error')
 
-        const message = process.argv.slice(2).join('') || "Hello, RabbitMQ from TypeScript!";
-        //send message to the exchange
-        channel.publish(exchange, "", Buffer.from(message), {
+        await channel.assertExchange(exchange, "direct", { durable: false });
+
+        const message = process.argv.slice(3).join(' ') || "Hello, RabbitMQ from TypeScript!";
+        //Publish message with a specifc routing key
+        channel.publish(exchange, severity, Buffer.from(message), {
             persistent: true
         });
-        console.log(`✅ Sent: ${message}`);
+        console.log(`✅ Sent: [${severity}] ${message}`);
 
         setTimeout(() => {
             connection.close();

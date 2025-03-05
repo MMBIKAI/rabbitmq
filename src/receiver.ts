@@ -6,19 +6,20 @@ const receiveMessage = async () => {
         const channel = await connection.createChannel();
         //const queue = "task_queue";
         const exchange = "logs"; //same exchange used in sender
+        const severity = process.argv[2] ||"info"; // Listen for specific key
 
-        //Declare a fanout exchange (no routing key, just broadcast to all queues bound to it)
-        await channel.assertExchange(exchange, "fanout", { durable: false });
+        //Declare the direct exchange
+        await channel.assertExchange(exchange, "direct", { durable: false });
 
         //Create a temporary queue (it will be deleted when the consumer disconnects)
         const { queue } = await channel.assertQueue("", {exclusive: true})
 
-        console.log("📥 Waiting for messages...");
+        console.log(`📥 Waiting for messages of type: "${severity}"...`);
 
         channel.prefetch(1); //Ensure fair dispatch
 
-        //Bind the temporary queue to the fanout exhange
-        await channel.bindQueue(queue, exchange, "")
+        //Bind queue to exchange with the specific routing key
+        await channel.bindQueue(queue, exchange, severity)
 
         channel.consume(queue, (msg) => {
             if (msg) {
