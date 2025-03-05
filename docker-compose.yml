@@ -1,0 +1,19 @@
+services:
+  rabbitmq:
+    image: "rabbitmq:management"
+    container_name: rabbitmq
+    ports:
+      - "5672:5672"   # RabbitMQ message broker
+      - "15672:15672" # Management UI
+    environment:
+      RABBITMQ_DEFAULT_USER: guest
+      RABBITMQ_DEFAULT_PASS: guest
+
+  app:
+    build: .
+    container_name: rabbitmq_app
+    depends_on:
+      - rabbitmq
+    volumes:
+      - .:/app
+    command: ["tail", "-f", "/dev/null"]
