@@ -9,6 +9,8 @@ const receiveMessage = async () => {
         await channel.assertQueue(queue, { durable: false });
         console.log("📥 Waiting for messages...");
 
+        channel.prefetch(1); //Ensure fair dispatch
+
         channel.consume(queue, (msg) => {
             if (msg) {
                 var secs = msg.content.toString().split('.').length-1;
