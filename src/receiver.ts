@@ -4,12 +4,21 @@ const receiveMessage = async () => {
     try {
         const connection = await amqp.connect("amqp://rabbitmq");
         const channel = await connection.createChannel();
-        const queue = "task_queue";
+        //const queue = "task_queue";
+        const exchange = "logs"; //same exchange used in sender
 
-        await channel.assertQueue(queue, { durable: false });
+        //Declare a fanout exchange (no routing key, just broadcast to all queues bound to it)
+        await channel.assertExchange(exchange, "fanout", { durable: false });
+
+        //Create a temporary queue (it will be deleted when the consumer disconnects)
+        const { queue } = await channel.assertQueue("", {exclusive: true})
+
         console.log("📥 Waiting for messages...");
 
         channel.prefetch(1); //Ensure fair dispatch
+
+        //Bind the temporary queue to the fanout exhange
+        await channel.bindQueue(queue, exchange, "")
 
         channel.consume(queue, (msg) => {
             if (msg) {

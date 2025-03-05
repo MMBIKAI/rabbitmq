@@ -4,12 +4,14 @@ const sendMessage = async () => {
     try {
         const connection = await amqp.connect("amqp://rabbitmq");
         const channel = await connection.createChannel();
-        const queue = "task_queue";
+        //const queue = "task_queue";
+        const exchange = "logs"; //name of the exchange
 
-        await channel.assertQueue(queue, { durable: false });
+        await channel.assertExchange(exchange, "fanout", { durable: false });
 
         const message = process.argv.slice(2).join('') || "Hello, RabbitMQ from TypeScript!";
-        channel.sendToQueue(queue, Buffer.from(message), {
+        //send message to the exchange
+        channel.publish(exchange, "", Buffer.from(message), {
             persistent: true
         });
         console.log(`✅ Sent: ${message}`);
