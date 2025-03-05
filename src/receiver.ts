@@ -17,9 +17,12 @@ const receiveMessage = async () => {
 
             setTimeout(() => {
                 console.log("DONE")
+                channel.ack(msg); //send ack after processing
             }, secs * 1000);
         }
-        }, { noAck: true });
+        }, { 
+            noAck: false
+         });
 
     } catch (error) {
         console.error("❌ Error receiving message:", error);
