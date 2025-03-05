@@ -7,16 +7,16 @@ const sendMessage = async () => {
         //const queue = "task_queue";
         const exchange = "logs"; //name of the exchange
 
-        const severity = process.argv[2] || "info"; //Routing Key (e.g., 'info', 'error')
+        const routingKey = process.argv[2] || "info.general"; // Topic key
 
-        await channel.assertExchange(exchange, "direct", { durable: false });
+        await channel.assertExchange(exchange, "topic", { durable: false });
 
         const message = process.argv.slice(3).join(' ') || "Hello, RabbitMQ from TypeScript!";
-        //Publish message with a specifc routing key
-        channel.publish(exchange, severity, Buffer.from(message), {
+        //Publish message with a specifc topic key
+        channel.publish(exchange, routingKey, Buffer.from(message), {
             persistent: true
         });
-        console.log(`✅ Sent: [${severity}] ${message}`);
+        console.log(`✅ Sent: [${routingKey}] ${message}`);
 
         setTimeout(() => {
             connection.close();
