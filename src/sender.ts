@@ -1,30 +1,48 @@
 import amqp from "amqplib";
+import { randomUUID } from "crypto";
 
-const sendMessage = async () => {
+const sendRPCRequest = async () => {
     try {
         const connection = await amqp.connect("amqp://rabbitmq");
         const channel = await connection.createChannel();
         //const queue = "task_queue";
-        const exchange = "logs"; //name of the exchange
+        const exchange = "rpc_exchange"; //name of the exchange
 
-        const routingKey = process.argv[2] || "info.general"; // Topic key
+        const routingKey = "rpc_task"; // Topic key
+        
+        await channel.assertExchange(exchange, "direct", { durable: false });
+        
+        //Create a temporary reply queue
+        const { queue: replyQueue } = await channel.assertQueue("", { exclusive: true });
 
-        await channel.assertExchange(exchange, "topic", { durable: false });
+        const correlationId = randomUUID();
+        const message = process.argv[2] || "10"; //default request: 10
 
-        const message = process.argv.slice(3).join(' ') || "Hello, RabbitMQ from TypeScript!";
-        //Publish message with a specifc topic key
+        //listen for response
+        channel.consume(replyQueue, (msg) =>{
+            if (msg?.properties.correlationId === correlationId) {
+                console.log(`✅ Received RPC response: ${msg.content.toString()}`);
+                connection.close();
+                process.exit(0);
+            }
+        },{
+            noAck: true
+        });
+
+        //Publish message (send request)
         channel.publish(exchange, routingKey, Buffer.from(message), {
-            persistent: true
+            correlationId,
+            replyTo: replyQueue,
         });
         console.log(`✅ Sent: [${routingKey}] ${message}`);
 
-        setTimeout(() => {
+        /*setTimeout(() => {
             connection.close();
             process.exit(0);
-        }, 500);
+        }, 500);*/
     } catch (error) {
-        console.error("❌ Error sending message:", error);
+        console.error("❌ Error in RPC client:", error);
     }
 };
 
-sendMessage();
+sendRPCRequest();

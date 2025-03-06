@@ -1,33 +1,45 @@
 import amqp from "amqplib";
 
-const receiveMessage = async () => {
+const startRPCServer = async () => {
     try {
         const connection = await amqp.connect("amqp://rabbitmq");
         const channel = await connection.createChannel();
         //const queue = "task_queue";
-        const exchange = "logs"; //same exchange used in sender
-        const topicPattern = process.argv[2] || "#"; // Patternfor filtering topics
+        const exchange = "rpc_exchange"; //same exchange used in sender
+        const routingKey = "rpc_task";
+        //const topicPattern = process.argv[2] || "#"; // Patternfor filtering topics
 
         //Declare the direct exchange
-        await channel.assertExchange(exchange, "topic", { durable: false });
+        await channel.assertExchange(exchange, "direct", { durable: false });
 
-        //Create a temporary queue (it will be deleted when the consumer disconnects)
-        const { queue } = await channel.assertQueue("", {exclusive: true})
+        //Create a temporary queue (it will be deleted when the consumer disconnects) for the sever to listen for tasks
+        const { queue } = await channel.assertQueue("", {exclusive: true});
+        await channel.bindQueue(queue, exchange, routingKey);
 
-        console.log(`📥 Waiting for messages of type: "${topicPattern}"...`);
+        console.log(`🔹 RPC Server is waiting for requests...`);
 
         channel.prefetch(1); //Ensure fair dispatch
 
-        //Bind queue to exchange with the specific routing key
-        await channel.bindQueue(queue, exchange, topicPattern)
-
-        channel.consume(queue, (msg) => {
+        channel.consume(queue, async (msg) => {
             if (msg) {
+                const number = parseInt(msg.content.toString(), 10);
+                console.log(`📥 Received request: ${number}`);
+
+                const response = number * 2; //Example processing: multiply by 2
+
+                channel.sendToQueue(
+                    msg.properties.replyTo,
+                    Buffer.from(response.toString()),
+                    { correlationId: msg.properties.correlationId }
+                );
+
+                channel.ack(msg); //send ack after processing
+
                // var secs = msg.content.toString().split('.').length-1;
-                console.log(`📩 Received [${msg.fields.routingKey}]: ${msg.content.toString()}`);
+              /*  console.log(`📩 Received [${msg.fields.routingKey}]: ${msg.content.toString()}`);
             
                 channel.ack(msg); //send ack after processing
-           /* setTimeout(() => {
+             setTimeout(() => {
                 console.log("DONE")
                 channel.ack(msg); //send ack after processing
             }, secs * 1000);*/
@@ -37,8 +49,8 @@ const receiveMessage = async () => {
          });
 
     } catch (error) {
-        console.error("❌ Error receiving message:", error);
+        console.error("❌ Error in RPC Server:", error);
     }
 };
 
-receiveMessage();
+startRPCServer();
