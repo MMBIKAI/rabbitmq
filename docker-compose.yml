@@ -16,4 +16,6 @@ services:
       - rabbitmq
     volumes:
       - .:/app
+    ports:
+      - "3000:3000"   # Expose port 3000 to access the app
     command: ["tail", "-f", "/dev/null"]

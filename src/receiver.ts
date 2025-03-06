@@ -1,12 +1,13 @@
+//user-service.ts (Microservice worker)
 import amqp from "amqplib";
 
-const startRPCServer = async () => {
+const startUserService = async () => {
     try {
         const connection = await amqp.connect("amqp://rabbitmq");
         const channel = await connection.createChannel();
         //const queue = "task_queue";
         const exchange = "rpc_exchange"; //same exchange used in sender
-        const routingKey = "rpc_task";
+        const routingKey = "user_data_request";
         //const topicPattern = process.argv[2] || "#"; // Patternfor filtering topics
 
         //Declare the direct exchange
@@ -16,20 +17,21 @@ const startRPCServer = async () => {
         const { queue } = await channel.assertQueue("", {exclusive: true});
         await channel.bindQueue(queue, exchange, routingKey);
 
-        console.log(`🔹 RPC Server is waiting for requests...`);
+        console.log("🔹 User Service waiting for requests...");
 
         channel.prefetch(1); //Ensure fair dispatch
 
         channel.consume(queue, async (msg) => {
             if (msg) {
-                const number = parseInt(msg.content.toString(), 10);
-                console.log(`📥 Received request: ${number}`);
+                const userId = msg.content.toString();
+                console.log(`📥 Processing userId: ${userId}`);
 
-                const response = number * 2; //Example processing: multiply by 2
+                // Simulate fetching user data
+                const userData = { userId, name: "John Doe", email: "john@example.com" };
 
                 channel.sendToQueue(
                     msg.properties.replyTo,
-                    Buffer.from(response.toString()),
+                    Buffer.from(JSON.stringify(userData)),
                     { correlationId: msg.properties.correlationId }
                 );
 
@@ -53,4 +55,4 @@ const startRPCServer = async () => {
     }
 };
 
-startRPCServer();
+startUserService().catch(console.error);
